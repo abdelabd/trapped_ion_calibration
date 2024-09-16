@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
-from torch.distributions import Normal
+from torch.distributions import Normal, Beta
 import numpy as np
 
 class MLPActorCritic(nn.Module):
@@ -12,7 +13,7 @@ class MLPActorCritic(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, output_dim),
+            nn.Linear(hidden_dim, output_dim * 2), # Output alpha and beta
         )
         self.critic = nn.Sequential(
             nn.Linear(input_dim, hidden_dim),
@@ -21,13 +22,14 @@ class MLPActorCritic(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_dim, 1)
         )
-        self.log_std = nn.Parameter(torch.zeros(output_dim))
 
     def forward(self, state):
         value = self.critic(state)
-        mu = self.actor(state)
-        std = self.log_std.exp().expand_as(mu)
-        return mu, std, value
+        alpha_beta = self.actor(state)
+        alpha, beta = alpha_beta.chunk(2, dim=-1)
+        alpha = F.softplus(alpha) + 1  # Ensure alpha > 0
+        beta = F.softplus(beta) + 1  # Ensure beta > 0
+        return alpha, beta, value
 
 class PPOAgent:
     def __init__(self, input_dim, hidden_dim, output_dim, lr, gamma, clip_epsilon, epochs):
@@ -42,10 +44,10 @@ class PPOAgent:
     def get_action(self, state):
         state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
         with torch.no_grad():
-            mu, std, _ = self.ac_model(state)
-        dist = Normal(mu, std)
+            alpha, beta, _ = self.ac_model(state)
+        dist = Beta(alpha, beta)
         action = dist.sample()
-        return action.cpu().numpy()[0]
+        return action.cpu().numpy()[0] * 2 - 1  # Scale from [0,1] to [-1,1]
 
     def update(self, states, actions, rewards, next_states, dones):
         states = torch.FloatTensor(np.array(states)).to(self.device)
@@ -53,6 +55,9 @@ class PPOAgent:
         rewards = torch.FloatTensor(np.array(rewards)).unsqueeze(1).to(self.device)
         next_states = torch.FloatTensor(np.array(next_states)).to(self.device)
         dones = torch.FloatTensor(np.array(dones)).unsqueeze(1).to(self.device)
+
+        # Normalize rewards
+        rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-8)
 
         # Compute advantages
         with torch.no_grad():
@@ -63,10 +68,11 @@ class PPOAgent:
 
         # PPO update
         for _ in range(self.epochs):
-            mu, std, values = self.ac_model(states)
-            dist = Normal(mu, std)
-            
-            log_probs = dist.log_prob(actions).sum(1, keepdim=True)
+            alpha, beta, values = self.ac_model(states)
+            dist = Beta(alpha, beta)
+
+            actions_scaled = (actions + 1) / 2
+            log_probs = dist.log_prob(actions_scaled).sum(1, keepdim=True)
             entropy = dist.entropy().mean()
 
             ratio = (log_probs - log_probs.detach()).exp()
