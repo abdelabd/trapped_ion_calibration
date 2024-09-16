@@ -57,7 +57,7 @@ class PPOAgent:
         dones = torch.FloatTensor(np.array(dones)).unsqueeze(1).to(self.device)
 
         # Normalize rewards
-        # rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-8)
+        rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-8)
 
         # Compute advantages
         with torch.no_grad():
