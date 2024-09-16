@@ -27,8 +27,10 @@ def train_ppo(env, agent, num_episodes, max_steps):
 
             if done:
                 break
-
+        
+        all_rewards.append(episode_reward)
         loss = agent.update(states, actions, rewards, next_states, dones)
+        all_losses.append(loss)
 
         if episode % 10 == 0:
             avg_reward = np.mean(all_rewards[-100:])
