@@ -59,10 +59,12 @@ def train_ppo(env, agent, num_episodes, max_steps):
         if episode==num_episodes-1:
             fig = plt.figure()
             plt.plot(range(len(episode_intensities)), episode_intensities)
+            plt.plot(range(len(episode_intensities)), [env.target_intensity]*len(episode_intensities), linestyle='--', label = "Target Intensity")
             plt.xlabel('Step')
-            plt.ylabel('Laser Intensity')
+            plt.ylabel('Laser Intensity (W/m^2)')
             plt.title("Final training episode")
-            plt.savefig("figures/final_training_episode.png")
+            plt.legend()
+            plt.savefig("figures/final_training_episode.png", bbox_inches='tight')
             plt.close(fig)
 
             print(f"Last action: {action}, Last reward: {reward:.2f}, Final intensity: {env.laser_intensity:.2f}")
@@ -94,4 +96,3 @@ if __name__ == "__main__":
     train_ppo(env, agent, num_episodes, max_steps)
     torch.save(agent.ac_model.state_dict(), "models/ppo_model.pth")
     print("Model saved!")
-    
