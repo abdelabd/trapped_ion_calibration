@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import random
+import matplotlib.pyplot as plt
 
 # Locals
 from env import TrappedIonEnv
@@ -55,6 +56,17 @@ def train_ppo(env, agent, num_episodes, max_steps):
             print(f"\nEpisode {episode}, Avg Reward (last 100): {avg_reward:.2f}, Avg Loss (last 100): {avg_loss:.4f}, Avg Final Intensity (last 100): {avg_intensity:.2f}")
             print(f"Last action: {action}, Last reward: {reward:.2f}, Final intensity: {env.laser_intensity:.2f}")
 
+        if episode==num_episodes-1:
+            fig = plt.figure()
+            plt.plot(range(len(episode_intensities)), episode_intensities)
+            plt.xlabel('Step')
+            plt.ylabel('Laser Intensity')
+            plt.title("Final training episode")
+            plt.savefig("figures/final_training_episode.png")
+            plt.close(fig)
+
+            print(f"Last action: {action}, Last reward: {reward:.2f}, Final intensity: {env.laser_intensity:.2f}")
+
 if __name__ == "__main__":
     # Set seeds for reproducibility
     seed = 777
@@ -76,7 +88,7 @@ if __name__ == "__main__":
         epochs=10
     )
 
-    num_episodes = 1000
+    num_episodes = 700
     max_steps = 100
 
     train_ppo(env, agent, num_episodes, max_steps)
