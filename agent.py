@@ -32,15 +32,19 @@ class MLPActorCritic(nn.Module):
         return alpha, beta, value
 
 class PPOAgent:
-    def __init__(self, input_dim, hidden_dim, output_dim, lr, gamma, clip_epsilon, epochs):
+    def __init__(self, input_dim, hidden_dim, output_dim, initial_lr, gamma, clip_epsilon, epochs, lr_schedule):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(f"self.device: {self.device}")
+
         self.ac_model = MLPActorCritic(input_dim, hidden_dim, output_dim).to(self.device)
-        self.optimizer = optim.Adam(self.ac_model.parameters(), lr=lr)
+
+        self.optimizer = optim.Adam(self.ac_model.parameters(), lr=initial_lr)
         self.gamma = gamma
         self.clip_epsilon = clip_epsilon
         self.epochs = epochs
         self.exploration_noise = 0.1  # Add exploration noise
+        self.lr_schedule = lr_schedule
+        self.current_lr = initial_lr
 
     def get_action(self, state):
         state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
@@ -103,3 +107,12 @@ class PPOAgent:
         self.exploration_noise *= 0.995
 
         return loss.item()
+    
+    def update_learning_rate(self, episode):
+        new_lr = self.lr_schedule(episode)
+        for param_group in self.optimizer.param_groups:
+            param_group['lr'] = new_lr
+        self.current_lr = new_lr
+        # new_lr = self.lr_schedule(episode)
+        # self.current_lr = new_lr
+        # self.optimizer = optim.Adam(self.ac_model.parameters(), lr=self.current_lr)

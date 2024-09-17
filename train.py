@@ -28,11 +28,18 @@ def save_episode_intensity(episode_intensities, target_intensity, filename, epis
     plt.savefig(filename, bbox_inches='tight')
     plt.close(fig)
 
+def lr_schedule(episode):
+    initial_lr = 1e-4
+    min_lr = 1e-6
+    decay_factor = 0.993
+    return max(initial_lr * (decay_factor ** episode), min_lr)
+
 # Training loop
 def train_ppo(env, agent, num_episodes, max_steps):
     all_rewards = []
     all_losses = []
     all_intensities = []
+    all_lrs = []
 
     for episode in range(num_episodes):
         state = env.reset()
@@ -62,6 +69,10 @@ def train_ppo(env, agent, num_episodes, max_steps):
         all_losses.append(loss)
         all_intensities.append(episode_intensities)
 
+        # Update learning rate
+        agent.update_learning_rate(episode)
+        all_lrs.append(agent.current_lr)
+
         if (episode % 10 == 0)|(episode==num_episodes-1):
             avg_reward = np.mean(all_rewards[-100:])
             avg_loss = np.mean(all_losses[-100:])
@@ -71,6 +82,7 @@ def train_ppo(env, agent, num_episodes, max_steps):
 
         if episode==num_episodes-1:
             save_episode_intensity(episode_intensities, env.target_intensity, "figures/final_training_episode.png", episode)
+            
 
 if __name__ == "__main__":
     # Set seeds for reproducibility
@@ -86,16 +98,17 @@ if __name__ == "__main__":
         input_dim=input_dim,
         hidden_dim=hidden_dim,
         output_dim=output_dim,
-        lr=1e-4,
+        initial_lr=1e-4,
         gamma=0.99,
         clip_epsilon=0.3,
-        epochs=10
+        epochs=10,
+        lr_schedule = lr_schedule
     )
 
     if DEBUG:
         num_episodes = 10
     else:
-        num_episodes = 700
+        num_episodes = 670
     max_steps = 100
 
     train_ppo(env, agent, num_episodes, max_steps)
