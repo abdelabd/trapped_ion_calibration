@@ -27,8 +27,8 @@ class MLPActorCritic(nn.Module):
         value = self.critic(state)
         alpha_beta = self.actor(state)
         alpha, beta = alpha_beta.chunk(2, dim=-1)
-        alpha = F.softplus(alpha) + 1  # Ensure alpha > 0
-        beta = F.softplus(beta) + 1  # Ensure beta > 0
+        alpha = F.softplus(alpha) + 1.01  # Ensure alpha > 0
+        beta = F.softplus(beta) + 1.01  # Ensure beta > 0
         return alpha, beta, value
 
 class PPOAgent:
@@ -40,6 +40,7 @@ class PPOAgent:
         self.gamma = gamma
         self.clip_epsilon = clip_epsilon
         self.epochs = epochs
+        self.exploration_noise = 0.1  # Add exploration noise
 
     def get_action(self, state):
         state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
@@ -47,6 +48,10 @@ class PPOAgent:
             alpha, beta, _ = self.ac_model(state)
         dist = Beta(alpha, beta)
         action = dist.sample()
+
+        # Add exploration noise
+        action = action + torch.randn_like(action) * self.exploration_noise
+        action = torch.clamp(action, 0, 1)
         return action.cpu().numpy()[0] * 2 - 1  # Scale from [0,1] to [-1,1]
 
     def update(self, states, actions, rewards, next_states, dones):
@@ -69,9 +74,15 @@ class PPOAgent:
         # PPO update
         for _ in range(self.epochs):
             alpha, beta, values = self.ac_model(states)
+
+            # Add numerical stability
+            alpha = torch.clamp(alpha, 1.01, 100)
+            beta = torch.clamp(beta, 1.01, 100)
+
             dist = Beta(alpha, beta)
 
             actions_scaled = (actions + 1) / 2
+            actions_scaled = torch.clamp(actions_scaled, 0.01, 0.99)  # Avoid 0 and 1
             log_probs = dist.log_prob(actions_scaled).sum(1, keepdim=True)
             entropy = dist.entropy().mean()
 
@@ -85,7 +96,10 @@ class PPOAgent:
 
             self.optimizer.zero_grad()
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(self.ac_model.parameters(), 0.5)
+            torch.nn.utils.clip_grad_norm_(self.ac_model.parameters(), max_norm=0.5)
             self.optimizer.step()
+
+        # Decay exploration noise
+        self.exploration_noise *= 0.995
 
         return loss.item()
