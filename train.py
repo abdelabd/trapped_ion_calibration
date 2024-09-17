@@ -62,7 +62,7 @@ def train_ppo(env, agent, num_episodes, max_steps):
         all_losses.append(loss)
         all_intensities.append(episode_intensities)
 
-        if episode % 10 == 0:
+        if (episode % 10 == 0)|(episode==num_episodes-1):
             avg_reward = np.mean(all_rewards[-100:])
             avg_loss = np.mean(all_losses[-100:])
             avg_intensity = np.mean([intensities[-1] for intensities in all_intensities[-100:]])
@@ -71,7 +71,6 @@ def train_ppo(env, agent, num_episodes, max_steps):
 
         if episode==num_episodes-1:
             save_episode_intensity(episode_intensities, env.target_intensity, "figures/final_training_episode.png", episode)
-            print(f"Last action: {action}, Last reward: {reward:.2f}, Final intensity: {env.laser_intensity:.2f}")
 
 if __name__ == "__main__":
     # Set seeds for reproducibility
