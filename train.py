@@ -92,3 +92,6 @@ if __name__ == "__main__":
     max_steps = 100
 
     train_ppo(env, agent, num_episodes, max_steps)
+    torch.save(agent.ac_model.state_dict(), "models/ppo_model.pth")
+    print("Model saved!")
+    
