@@ -23,6 +23,13 @@ class TrappedIonEnv(gym.Env):
         self.max_steps = 100
         self.current_step = 0
 
+        # Initialize random number generator
+        self.np_random = None
+
+    def seed(self, seed=None):
+        self.np_random, seed = gym.utils.seeding.np_random(seed)
+        return [seed]
+
     def reset(self):
         # Reset the environment to the initial state
         self.laser_intensity = 0.0
@@ -53,6 +60,8 @@ class TrappedIonEnv(gym.Env):
 
     def _get_observation(self):
         # Simulate a measurement (add some noise)
+        if self.np_random is None:
+            self.seed()
         measurement = self.laser_intensity + np.random.normal(0, 0.1)
         return np.array([measurement], dtype=np.float32)
 
