@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from env import TrappedIonEnv
 from agent import PPOAgent
 
-DEBUG = True
+DEBUG = False
 
 def set_random_seed(seed):
     torch.manual_seed(seed)
