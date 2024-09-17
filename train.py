@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 from env import TrappedIonEnv
 from agent import PPOAgent
 
+DEBUG = True
+
 def set_random_seed(seed):
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
@@ -14,6 +16,17 @@ def set_random_seed(seed):
     random.seed(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
+
+def save_episode_intensity(episode_intensities, target_intensity, filename, episode=None):
+    fig = plt.figure()
+    plt.plot(range(len(episode_intensities)), episode_intensities)
+    plt.plot(range(len(episode_intensities)), [target_intensity]*len(episode_intensities), linestyle='--', label = "Target Intensity")
+    plt.xlabel('Step')
+    plt.ylabel('Laser Intensity (W/m^2)')
+    plt.title(f"Final training episode = {episode+1}")
+    plt.legend()
+    plt.savefig(filename, bbox_inches='tight')
+    plt.close(fig)
 
 # Training loop
 def train_ppo(env, agent, num_episodes, max_steps):
@@ -57,16 +70,7 @@ def train_ppo(env, agent, num_episodes, max_steps):
             print(f"Last action: {action}, Last reward: {reward:.2f}, Final intensity: {env.laser_intensity:.2f}")
 
         if episode==num_episodes-1:
-            fig = plt.figure()
-            plt.plot(range(len(episode_intensities)), episode_intensities)
-            plt.plot(range(len(episode_intensities)), [env.target_intensity]*len(episode_intensities), linestyle='--', label = "Target Intensity")
-            plt.xlabel('Step')
-            plt.ylabel('Laser Intensity (W/m^2)')
-            plt.title("Final training episode")
-            plt.legend()
-            plt.savefig("figures/final_training_episode.png", bbox_inches='tight')
-            plt.close(fig)
-
+            save_episode_intensity(episode_intensities, env.target_intensity, "figures/final_training_episode.png", episode)
             print(f"Last action: {action}, Last reward: {reward:.2f}, Final intensity: {env.laser_intensity:.2f}")
 
 if __name__ == "__main__":
@@ -90,7 +94,10 @@ if __name__ == "__main__":
         epochs=10
     )
 
-    num_episodes = 700
+    if DEBUG:
+        num_episodes = 10
+    else:
+        num_episodes = 700
     max_steps = 100
 
     train_ppo(env, agent, num_episodes, max_steps)
