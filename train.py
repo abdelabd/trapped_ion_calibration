@@ -67,7 +67,7 @@ def train_ppo(env, agent, num_episodes, max_steps):
             avg_loss = np.mean(all_losses[-100:])
             avg_intensity = np.mean([intensities[-1] for intensities in all_intensities[-100:]])
             print(f"\nEpisode {episode}, Avg Reward (last 100): {avg_reward:.2f}, Avg Loss (last 100): {avg_loss:.4f}, Avg Final Intensity (last 100): {avg_intensity:.2f}")
-            print(f"Last action: {action}, Last reward: {reward:.2f}, Final intensity: {env.laser_intensity:.2f}")
+            print(f"Last action: {action}, Last reward: {reward:.2f}, Initial intensity: {env.initial_intensity:.2f}, Final intensity: {env.laser_intensity:.2f}")
 
         if episode==num_episodes-1:
             save_episode_intensity(episode_intensities, env.target_intensity, "figures/final_training_episode.png", episode)
@@ -76,8 +76,7 @@ if __name__ == "__main__":
     # Set seeds for reproducibility
     seed = 777
     set_random_seed(seed)
-    env = TrappedIonEnv()
-    env.seed(seed)  # Set seed for the environment
+    env = TrappedIonEnv(seed=seed)
 
     input_dim = env.observation_space.shape[0]
     hidden_dim = 64
@@ -87,9 +86,9 @@ if __name__ == "__main__":
         input_dim=input_dim,
         hidden_dim=hidden_dim,
         output_dim=output_dim,
-        lr=3e-4,
+        lr=1e-4,
         gamma=0.99,
-        clip_epsilon=0.2,
+        clip_epsilon=0.3,
         epochs=10
     )
 

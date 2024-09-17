@@ -3,8 +3,16 @@ from gym import spaces
 import numpy as np
 
 class TrappedIonEnv(gym.Env):
-    def __init__(self):
+    def __init__(self, seed=None):
         super(TrappedIonEnv, self).__init__()
+
+        self.seed(seed)
+
+        # Target intensity (unknown to the agent)
+        self.target_intensity = 10.0
+
+        # Initialize laser intensity
+        self.reset()
         
         # Define action and observation space
         # Action space: continuous adjustment to laser intensity
@@ -13,20 +21,13 @@ class TrappedIonEnv(gym.Env):
         # Observation space: scalar measurement of the system
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(1,), dtype=np.float32)
         
-        # Initialize laser intensity
-        self.laser_intensity = 0.0
-        
-        # Target intensity (unknown to the agent)
-        self.target_intensity = 10.0
-        
         # Maximum number of steps per episode
         self.max_steps = 100
         self.current_step = 0
 
         # Initialize random number generator
         self.np_random = None
-
-        self.seed()
+        
 
     def seed(self, seed=None):
         self.np_random, seed = gym.utils.seeding.np_random(seed)
@@ -34,7 +35,8 @@ class TrappedIonEnv(gym.Env):
 
     def reset(self):
         # Reset the environment to the initial state
-        self.laser_intensity = 0.0
+        self.initial_intensity = self.np_random.normal(10, 4)
+        self.laser_intensity = self.initial_intensity
         self.current_step = 0
         return self._get_observation()
 
