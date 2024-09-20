@@ -25,10 +25,6 @@ class TrappedIonEnv(gym.Env):
         self.max_steps = 100
         self.current_step = 0
 
-        # Initialize random number generator
-        self.np_random = None
-        
-
     def seed(self, seed=None):
         self.np_random, seed = gym.utils.seeding.np_random(seed)
         return [seed]
