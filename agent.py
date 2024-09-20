@@ -88,7 +88,7 @@ class PPOAgent:
             dist = Beta(alpha, beta)
 
             actions_scaled = (actions + 1) / 2
-            actions_scaled = torch.clamp(actions_scaled, 0.01, 0.99)  # Avoid 0 and 1
+            actions_scaled = torch.clamp(actions_scaled, 1e-6, 1-1e-6)  # Avoid 0 and 1
             log_probs = dist.log_prob(actions_scaled).sum(1, keepdim=True)
             entropy = dist.entropy().mean()
 
