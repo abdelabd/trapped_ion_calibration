@@ -28,9 +28,22 @@ def save_episode_intensity(episode_intensities, target_intensity, filename, epis
     plt.savefig(filename, bbox_inches='tight')
     plt.close(fig)
 
+def save_n_episode_intensity(n, all_episode_intensities, target_intensity, filename, episode=None):
+    fig = plt.figure()
+    for i in range(n-1, 0, -1):
+        episode_intensities = all_episode_intensities[i]
+        plt.plot(range(len(episode_intensities)), episode_intensities, color="r", alpha = 0.1)
+    plt.plot(range(len(episode_intensities)), [target_intensity]*len(episode_intensities), linestyle='--', label = "Target Intensity")
+    plt.xlabel('Step')
+    plt.ylabel('Laser Intensity (W/m^2)')
+    plt.title(f"Final training episode = {episode+1}")
+    plt.legend()
+    plt.savefig(filename, bbox_inches='tight')
+    plt.close(fig)
+
 def lr_schedule(episode):
     initial_lr = 1e-4
-    min_lr = 1e-6
+    min_lr = 1e-7
     decay_factor = 0.993
     return max(initial_lr * (decay_factor ** episode), min_lr)
 
@@ -75,12 +88,16 @@ def train_ppo(env, agent, num_episodes, max_steps):
 
         if (episode % 10 == 0)|(episode==num_episodes-1):
             avg_reward = np.mean(all_rewards[-100:])
+            std_reward = np.std(all_rewards[-100:])
             avg_loss = np.mean(all_losses[-100:])
+            std_loss = np.std(all_losses[-100:])
             avg_intensity = np.mean([intensities[-1] for intensities in all_intensities[-100:]])
-            print(f"\nEpisode {episode}, Avg Reward (last 100): {avg_reward:.2f}, Avg Loss (last 100): {avg_loss:.4f}, Avg Final Intensity (last 100): {avg_intensity:.2f}")
+            std_intensity = np.std([intensities[-1] for intensities in all_intensities[-100:]])
+            print(f"\nEpisode {episode}, Avg Reward (last 100): {avg_reward:.2f}, Avg Loss (last 100): {avg_loss:.4f}, Avg Final Intensity (last 100): {avg_intensity:.2f}, Std final intensity (last 100): {std_intensity:.2f}")
             print(f"Last action: {action}, Last reward: {reward:.2f}, Initial intensity: {env.initial_intensity:.2f}, Final intensity: {env.laser_intensity:.2f}")
 
         if episode==num_episodes-1:
+            save_n_episode_intensity(100, all_intensities, env.target_intensity, "figures/final_100_training_episode.png", episode)
             save_episode_intensity(episode_intensities, env.target_intensity, "figures/final_training_episode.png", episode)
             
 
@@ -106,9 +123,9 @@ if __name__ == "__main__":
     )
 
     if DEBUG:
-        num_episodes = 10
+        num_episodes = 100
     else:
-        num_episodes = 670
+        num_episodes = int(1e3)
     max_steps = 100
 
     train_ppo(env, agent, num_episodes, max_steps)
