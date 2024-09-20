@@ -60,7 +60,7 @@ class TrappedIonEnv(gym.Env):
 
     def _get_observation(self):
         # Simulate a measurement (add some noise)
-        measurement = self.laser_intensity + np.random.normal(0, 0.1)
+        measurement = self.laser_intensity + self.np_random.normal(0, 0.1)
         return np.array([measurement], dtype=np.float32)
 
     def render(self, mode='human'):
