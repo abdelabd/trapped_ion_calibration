@@ -44,7 +44,7 @@ def save_n_episode_intensity(n, all_episode_intensities, target_intensity, filen
 def lr_schedule(episode):
     initial_lr = 1e-4
     min_lr = 1e-7
-    decay_factor = 0.993
+    decay_factor = 0.995
     return max(initial_lr * (decay_factor ** episode), min_lr)
 
 # Training loop
@@ -59,15 +59,16 @@ def train_ppo(env, agent, num_episodes, max_steps):
         for episode in range(num_episodes):
             state = env.reset()
             episode_reward = 0
-            states, actions, rewards, next_states, dones = [], [], [], [], []
+            states, actions, log_probs, rewards, next_states, dones = [], [], [], [], [], []
             episode_intensities = []
 
             for step in range(max_steps):
-                action = agent.get_action(state)
+                action, log_prob = agent.get_action(state)
                 next_state, reward, done, _ = env.step(action)
 
                 states.append(state)
                 actions.append(action)
+                log_probs.append(log_prob)
                 rewards.append(reward)
                 next_states.append(next_state)
                 dones.append(done)
@@ -80,7 +81,7 @@ def train_ppo(env, agent, num_episodes, max_steps):
                     break
             
             all_rewards.append(episode_reward)
-            loss = agent.update(states, actions, rewards, next_states, dones)
+            loss = agent.update(states, actions, log_prob, rewards, next_states, dones)
             all_losses.append(loss)
             all_intensities.append(episode_intensities)
 

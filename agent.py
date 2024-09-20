@@ -51,16 +51,20 @@ class PPOAgent:
         with torch.no_grad():
             alpha, beta, _ = self.ac_model(state)
         dist = Beta(alpha, beta)
+
         action = dist.sample()
+        log_prob = dist.log_prob(action)
 
         # Add exploration noise
         action = action + torch.randn_like(action) * self.exploration_noise
         action = torch.clamp(action, 0, 1)
-        return action.cpu().numpy()[0] * 2 - 1  # Scale from [0,1] to [-1,1]
+        scaled_action = action.cpu().numpy()[0] * 2 - 1  # Scale from [0,1] to [-1,1]
+        return scaled_action, log_prob.cpu().numpy()
 
-    def update(self, states, actions, rewards, next_states, dones):
+    def update(self, states, actions, old_log_probs, rewards, next_states, dones):
         states = torch.FloatTensor(np.array(states)).to(self.device)
         actions = torch.FloatTensor(np.array(actions)).to(self.device)
+        old_log_probs = torch.FloatTensor(np.array(old_log_probs)).unsqueeze(1).to(self.device)
         rewards = torch.FloatTensor(np.array(rewards)).unsqueeze(1).to(self.device)
         next_states = torch.FloatTensor(np.array(next_states)).to(self.device)
         dones = torch.FloatTensor(np.array(dones)).unsqueeze(1).to(self.device)
@@ -90,7 +94,7 @@ class PPOAgent:
             log_probs = dist.log_prob(actions_scaled).sum(1, keepdim=True)
             entropy = dist.entropy().mean()
 
-            ratio = (log_probs - log_probs.detach()).exp()
+            ratio = (log_probs - old_log_probs.detach()).exp()
             surr1 = ratio * advantages
             surr2 = torch.clamp(ratio, 1.0 - self.clip_epsilon, 1.0 + self.clip_epsilon) * advantages
             
