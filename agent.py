@@ -56,8 +56,6 @@ class PPOAgent:
         log_prob = dist.log_prob(action)
 
         # Add exploration noise
-        action = action + torch.randn_like(action) * self.exploration_noise
-        action = torch.clamp(action, 0, 1)
         scaled_action = action.cpu().numpy()[0] * 2 - 1  # Scale from [0,1] to [-1,1]
         return scaled_action, log_prob.cpu().numpy()
 
