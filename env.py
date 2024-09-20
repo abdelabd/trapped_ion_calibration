@@ -9,7 +9,9 @@ class TrappedIonEnv(gym.Env):
         self.seed(seed)
 
         # Target intensity (unknown to the agent)
+        self.min_intensity = 0.0
         self.target_intensity = 10.0
+        self.max_intensity = 25.0
 
         # Initialize laser intensity
         self.reset()
@@ -31,7 +33,7 @@ class TrappedIonEnv(gym.Env):
 
     def reset(self):
         # Reset the environment to the initial state
-        self.initial_intensity = self.np_random.normal(10, 4)
+        self.initial_intensity = np.clip(self.np_random.normal(10, 4), a_min=self.min_intensity, a_max=self.max_intensity)
         self.laser_intensity = self.initial_intensity
         self.current_step = 0
         return self._get_observation()
