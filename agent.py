@@ -110,9 +110,7 @@ class PPOAgent:
     
     def update_learning_rate(self, episode):
         new_lr = self.lr_schedule(episode)
+        self.current_lr = new_lr
         for param_group in self.optimizer.param_groups:
             param_group['lr'] = new_lr
-        self.current_lr = new_lr
-        # new_lr = self.lr_schedule(episode)
-        # self.current_lr = new_lr
         # self.optimizer = optim.Adam(self.ac_model.parameters(), lr=self.current_lr)
