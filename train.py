@@ -54,51 +54,65 @@ def train_ppo(env, agent, num_episodes, max_steps):
     all_intensities = []
     all_lrs = []
 
-    for episode in range(num_episodes):
-        state = env.reset()
-        episode_reward = 0
-        states, actions, rewards, next_states, dones = [], [], [], [], []
-        episode_intensities = []
+    try:
 
-        for step in range(max_steps):
-            action = agent.get_action(state)
-            next_state, reward, done, _ = env.step(action)
+        for episode in range(num_episodes):
+            state = env.reset()
+            episode_reward = 0
+            states, actions, rewards, next_states, dones = [], [], [], [], []
+            episode_intensities = []
 
-            states.append(state)
-            actions.append(action)
-            rewards.append(reward)
-            next_states.append(next_state)
-            dones.append(done)
-            episode_intensities.append(env.laser_intensity)
+            for step in range(max_steps):
+                action = agent.get_action(state)
+                next_state, reward, done, _ = env.step(action)
 
-            state = next_state
-            episode_reward += reward
+                states.append(state)
+                actions.append(action)
+                rewards.append(reward)
+                next_states.append(next_state)
+                dones.append(done)
+                episode_intensities.append(env.laser_intensity)
 
-            if done:
-                break
+                state = next_state
+                episode_reward += reward
+
+                if done:
+                    break
+            
+            all_rewards.append(episode_reward)
+            loss = agent.update(states, actions, rewards, next_states, dones)
+            all_losses.append(loss)
+            all_intensities.append(episode_intensities)
+
+            # Update learning rate
+            agent.update_learning_rate(episode)
+            all_lrs.append(agent.current_lr)
+
+            if (episode % 10 == 0)|(episode==num_episodes-1):
+                avg_reward = np.mean(all_rewards[-100:])
+                std_reward = np.std(all_rewards[-100:])
+                avg_loss = np.mean(all_losses[-100:])
+                std_loss = np.std(all_losses[-100:])
+                avg_intensity = np.mean([intensities[-1] for intensities in all_intensities[-100:]])
+                std_intensity = np.std([intensities[-1] for intensities in all_intensities[-100:]])
+                print(f"\nEpisode {episode}, Avg Reward (last 100): {avg_reward:.2f}, Avg Loss (last 100): {avg_loss:.4f}, Avg Final Intensity (last 100): {avg_intensity:.2f}, Std final intensity (last 100): {std_intensity:.2f}")
+                print(f"Last action: {action}, Last reward: {reward:.2f}, Initial intensity: {env.initial_intensity:.2f}, Final intensity: {env.laser_intensity:.2f}")
+
+            if episode==num_episodes-1:
+                save_n_episode_intensity(100, all_intensities, env.target_intensity, "figures/final_100_training_episode.png", episode)
+                save_episode_intensity(episode_intensities, env.target_intensity, "figures/final_training_episode.png", episode)
+
+    except KeyboardInterrupt:
+        print("\n\nTraining interrupted!")
+        avg_reward = np.mean(all_rewards[-100:])
+        avg_loss = np.mean(all_losses[-100:])
+        avg_intensity = np.mean([intensities[-1] for intensities in all_intensities[-100:]])
+        std_intensity = np.std([intensities[-1] for intensities in all_intensities[-100:]])
+        print(f"Avg Reward (last 100): {avg_reward:.2f}, Avg Loss (last 100): {avg_loss:.4f}, Avg Final Intensity (last 100): {avg_intensity:.2f}, Std final intensity (last 100): {std_intensity:.2f}")
+        print(f"Last reward: {all_rewards[-1]:.2f}, Final intensity: {env.laser_intensity:.2f}")
+        save_n_episode_intensity(100, all_intensities, env.target_intensity, "figures/final_100_training_episode.png", episode)
+        save_episode_intensity(episode_intensities, env.target_intensity, "figures/final_training_episode.png", episode)
         
-        all_rewards.append(episode_reward)
-        loss = agent.update(states, actions, rewards, next_states, dones)
-        all_losses.append(loss)
-        all_intensities.append(episode_intensities)
-
-        # Update learning rate
-        agent.update_learning_rate(episode)
-        all_lrs.append(agent.current_lr)
-
-        if (episode % 10 == 0)|(episode==num_episodes-1):
-            avg_reward = np.mean(all_rewards[-100:])
-            std_reward = np.std(all_rewards[-100:])
-            avg_loss = np.mean(all_losses[-100:])
-            std_loss = np.std(all_losses[-100:])
-            avg_intensity = np.mean([intensities[-1] for intensities in all_intensities[-100:]])
-            std_intensity = np.std([intensities[-1] for intensities in all_intensities[-100:]])
-            print(f"\nEpisode {episode}, Avg Reward (last 100): {avg_reward:.2f}, Avg Loss (last 100): {avg_loss:.4f}, Avg Final Intensity (last 100): {avg_intensity:.2f}, Std final intensity (last 100): {std_intensity:.2f}")
-            print(f"Last action: {action}, Last reward: {reward:.2f}, Initial intensity: {env.initial_intensity:.2f}, Final intensity: {env.laser_intensity:.2f}")
-
-        if episode==num_episodes-1:
-            save_n_episode_intensity(100, all_intensities, env.target_intensity, "figures/final_100_training_episode.png", episode)
-            save_episode_intensity(episode_intensities, env.target_intensity, "figures/final_training_episode.png", episode)
             
 
 if __name__ == "__main__":
