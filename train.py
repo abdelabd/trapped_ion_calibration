@@ -81,7 +81,7 @@ def train_ppo(env, agent, num_episodes, max_steps):
                     break
             
             all_rewards.append(episode_reward)
-            loss = agent.update(states, actions, log_prob, rewards, next_states, dones)
+            loss = agent.update(states, actions, log_probs, rewards, next_states, dones)
             all_losses.append(loss)
             all_intensities.append(episode_intensities)
 
