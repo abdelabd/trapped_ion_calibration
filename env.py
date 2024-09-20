@@ -21,7 +21,7 @@ class TrappedIonEnv(gym.Env):
         self.action_space = spaces.Box(low=-1, high=1, shape=(1,), dtype=np.float32)
         
         # Observation space: scalar measurement of the system
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(1,), dtype=np.float32)
+        self.observation_space = spaces.Box(low=self.min_intensity, high=self.max_intensity, shape=(1,), dtype=np.float32)
         
         # Maximum number of steps per episode
         self.max_steps = 100
@@ -43,7 +43,7 @@ class TrappedIonEnv(gym.Env):
         self.laser_intensity += action[0]
         
         # Ensure non-negative intensity
-        self.laser_intensity = max(0, self.laser_intensity)
+        self.laser_intensity = np.clip(self.laser_intensity, a_min=self.min_intensity, a_max=self.max_intensity)
         
         # Get the new observation
         observation = self._get_observation()
