@@ -28,26 +28,26 @@ def save_episode_intensity(episode_intensities, target_intensity, filename, epis
     plt.savefig(filename, bbox_inches='tight')
     plt.close(fig)
 
-def save_n_episode_intensity(n, all_episode_intensities, target_intensity, filename, episode=None):
+def save_n_episode_intensity(all_episode_intensities, target_intensity, filename, episode=None):
     fig = plt.figure()
-    for i in range(n-1, 0, -1):
+    for i in range(len(all_episode_intensities)):
         episode_intensities = all_episode_intensities[i]
         plt.plot(range(len(episode_intensities)), episode_intensities, color="r", alpha = 0.1)
     plt.plot(range(env.max_steps), [target_intensity]*env.max_steps, linestyle='--', label = "Target Intensity")
     plt.xlabel('Step')
     plt.ylabel('Laser Intensity (W/m^2)')
-    plt.title(f"Final training episode = {episode+1}")
+    plt.title(f"{len(all_episode_intensities)} test episodes")
     plt.legend()
     plt.savefig(filename, bbox_inches='tight')
     plt.close(fig)
 
-def save_n_steps_hist(all_n_steps, filename, n_episodes=1000):
+def save_n_steps_hist(all_n_steps, n_test_episodes, filename):
     fig = plt.figure()
     n_steps_hist, n_steps_edges = np.histogram(all_n_steps, bins=100)
     plt.step(n_steps_edges[:-1], n_steps_hist, where='mid')
     plt.xlabel('Number of Steps')
     plt.ylabel('Frequency')
-    plt.title(f'Number of steps to calibrate laser-intensity, {n_episodes} training episodes')
+    plt.title(f'Number of calibration steps, {len(all_n_steps)}/{n_test_episodes} test episodes terminated')
     plt.savefig(filename, bbox_inches='tight')
     plt.close(fig)
 
@@ -57,15 +57,34 @@ def lr_schedule(episode):
     decay_factor = 0.995
     return max(decay_factor ** episode, min_lr/initial_lr)
 
+def test_ppo(env, agent, num_episodes, max_steps):
+    all_episode_intensities = []
+    all_n_steps = []
+
+    for episode in range(num_episodes):
+        state = env.reset()
+        episode_intensity = []
+        for step in range(max_steps):
+            action, _ = agent.get_action(state)
+            state, _, done, _ = env.step(action)
+            episode_intensity.append(env.laser_intensity)
+            if done:
+                if abs(env.laser_intensity-env.target_intensity)/env.target_intensity <= env.relative_error_threshold:
+                    all_n_steps.append(env.current_step)
+                break
+        all_episode_intensities.append(np.array(episode_intensity))
+
+    return all_episode_intensities, np.array(all_n_steps)
+
 # Training loop
-def train_ppo(env, agent, num_episodes, max_steps):
+def train_ppo(env, agent, n_train_episodes, max_steps, n_test_episodes):
     all_rewards = []
     all_losses = []
     all_intensities = []
     all_n_steps = []
 
     try:
-        for episode in range(num_episodes):
+        for episode in range(n_train_episodes):
             state = env.reset()
             episode_reward = 0
             states, actions, log_probs, rewards, next_states, dones = [], [], [], [], [], []
@@ -102,7 +121,7 @@ def train_ppo(env, agent, num_episodes, max_steps):
             # Update learning rate
             agent.scheduler.step()
 
-            if (episode % 10 == 0)|(episode==num_episodes-1):
+            if (episode % 10 == 0)|(episode==n_train_episodes-1):
                 # Handle cases where all_losses might be empty
                 if all_losses:
                     avg_loss = np.mean(all_losses[-100:])
@@ -117,10 +136,13 @@ def train_ppo(env, agent, num_episodes, max_steps):
                 print(f"\nEpisode {episode}, Avg Reward (last 100): {avg_reward:.2f}, Avg Loss (last 100): {avg_loss:.4f}, Avg Final Intensity (last 100): {avg_intensity:.2f}, Std Final Intensity (last 100): {std_intensity:.2f}")
                 print(f"Last action: {action}, Last reward: {reward:.2f}, Initial intensity: {env.initial_intensity:.2f}, Final intensity: {env.laser_intensity:.2f}")
 
-            if episode==num_episodes-1:
-                save_n_episode_intensity(100, all_intensities, env.target_intensity, "figures/final_100_training_episode.png", episode)
+            if episode==n_train_episodes-1:
                 save_episode_intensity(episode_intensities, env.target_intensity, "figures/final_training_episode.png", episode)
-                save_n_steps_hist(all_n_steps, "figures/n_steps_hist.png")
+                
+                print(f"\nTraining complete, running test trajectories...")
+                all_episode_intensities_test, all_n_steps_test = test_ppo(env, agent, n_test_episodes, max_steps)
+                save_n_episode_intensity(all_episode_intensities_test, env.target_intensity, f"figures/intensities_test_episodes.png", episode)
+                save_n_steps_hist(all_n_steps_test, n_test_episodes, "figures/n_steps_test_hist.png")
 
     except KeyboardInterrupt:
         print("\n\nTraining interrupted!")
@@ -134,9 +156,12 @@ def train_ppo(env, agent, num_episodes, max_steps):
         std_intensity = np.std([intensities[-1] for intensities in all_intensities[-100:] if intensities])
         print(f"Avg Reward (last 100): {avg_reward:.2f}, Avg Loss (last 100): {avg_loss:.4f}, Avg Final Intensity (last 100): {avg_intensity:.2f}, Std Final Intensity (last 100): {std_intensity:.2f}")
         print(f"Last reward: {all_rewards[-1]:.2f}, Final intensity: {env.laser_intensity:.2f}")
-        save_n_episode_intensity(100, all_intensities, env.target_intensity, "figures/final_100_training_episode.png", episode)
         save_episode_intensity(episode_intensities, env.target_intensity, "figures/final_training_episode.png", episode)
-        save_n_steps_hist(all_n_steps, "figures/n_steps_hist.png")
+        
+        print(f"\nTraining complete, running test trajectories...")
+        all_episode_intensities_test, all_n_steps_test = test_ppo(env, agent, n_test_episodes, max_steps)
+        save_n_episode_intensity(all_episode_intensities_test, env.target_intensity, f"figures/intensities_test_episodes.png", episode)
+        save_n_steps_hist(all_n_steps_test, n_test_episodes, "figures/n_steps_test_hist.png")
         
 if __name__ == "__main__":
     # Set seeds for reproducibility
@@ -160,11 +185,12 @@ if __name__ == "__main__":
     )
 
     if DEBUG:
-        num_episodes = 100
+        n_train_episodes = 100
     else:
-        num_episodes = int(1e3)
+        n_train_episodes = 800
+    n_test_episodes = int(1e3)
     max_steps = 100
 
-    train_ppo(env, agent, num_episodes, max_steps)
+    train_ppo(env, agent, n_train_episodes, max_steps, n_test_episodes)
     torch.save(agent.ac_model.state_dict(), "models/ppo_model.pth")
     print("Model saved!")
