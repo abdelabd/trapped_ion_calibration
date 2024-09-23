@@ -45,6 +45,7 @@ class PPOAgent:
         self.exploration_noise = 0.1  # Add exploration noise
         self.lr_schedule = lr_schedule
         self.current_lr = initial_lr
+        self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda=lr_schedule)
 
     def get_action(self, state):
         state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
@@ -55,7 +56,6 @@ class PPOAgent:
         action = dist.sample()
         log_prob = dist.log_prob(action)
 
-        # Add exploration noise
         scaled_action = action.cpu().numpy()[0] * 2 - 1  # Scale from [0,1] to [-1,1]
         return scaled_action, log_prob.cpu().numpy()
 
@@ -109,10 +109,3 @@ class PPOAgent:
         self.exploration_noise *= 0.995
 
         return loss.item()
-    
-    def update_learning_rate(self, episode):
-        new_lr = self.lr_schedule(episode)
-        self.current_lr = new_lr
-        for param_group in self.optimizer.param_groups:
-            param_group['lr'] = new_lr
-        # self.optimizer = optim.Adam(self.ac_model.parameters(), lr=self.current_lr)

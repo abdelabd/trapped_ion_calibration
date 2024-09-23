@@ -45,14 +45,13 @@ def lr_schedule(episode):
     initial_lr = 1e-4
     min_lr = 1e-7
     decay_factor = 0.995
-    return max(initial_lr * (decay_factor ** episode), min_lr)
+    return max(decay_factor ** episode, min_lr/initial_lr)
 
 # Training loop
 def train_ppo(env, agent, num_episodes, max_steps):
     all_rewards = []
     all_losses = []
     all_intensities = []
-    all_lrs = []
 
     try:
 
@@ -86,8 +85,7 @@ def train_ppo(env, agent, num_episodes, max_steps):
             all_intensities.append(episode_intensities)
 
             # Update learning rate
-            agent.update_learning_rate(episode)
-            all_lrs.append(agent.current_lr)
+            agent.scheduler.step()
 
             if (episode % 10 == 0)|(episode==num_episodes-1):
                 avg_reward = np.mean(all_rewards[-100:])
