@@ -76,6 +76,9 @@ class PPOAgent:
             _, _, values = self.ac_model(states)
             delta = rewards + self.gamma * next_values * (1 - dones) - values
             advantages = delta.detach()
+        
+        # Normalize advantages
+        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
 
         # PPO update
         for _ in range(self.epochs):
