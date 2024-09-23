@@ -58,6 +58,11 @@ class PPOAgent:
         return action.cpu().numpy()[0], log_prob.cpu().numpy()
 
     def update(self, states, actions, old_log_probs, rewards, next_states, dones):
+
+        # Skip update if there's insufficient data
+        if len(rewards) < 2:
+            return 0.0  # Return a default loss value or None
+        
         states = torch.FloatTensor(np.array(states)).to(self.device)
         actions = torch.FloatTensor(np.array(actions)).to(self.device)
         old_log_probs = torch.FloatTensor(np.array(old_log_probs)).unsqueeze(1).to(self.device)
@@ -65,8 +70,14 @@ class PPOAgent:
         next_states = torch.FloatTensor(np.array(next_states)).to(self.device)
         dones = torch.FloatTensor(np.array(dones)).unsqueeze(1).to(self.device)
 
-        # Normalize rewards
-        rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-8)
+        # Normalize rewards safely
+        rewards_mean = rewards.mean()
+        rewards_std = rewards.std()
+        if rewards_std > 1e-8:
+            rewards = (rewards - rewards_mean) / (rewards_std + 1e-8)
+        else:
+            rewards = rewards - rewards_mean  # Zero-mean normalization
+
 
         # Compute advantages
         with torch.no_grad():
@@ -75,8 +86,14 @@ class PPOAgent:
             delta = rewards + self.gamma * next_values * (1 - dones) - values
             advantages = delta.detach()
         
-        # Normalize advantages
-        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+        # Normalize advantages safely
+        advantages_mean = advantages.mean()
+        advantages_std = advantages.std()
+        if advantages_std > 1e-8:
+            advantages = (advantages - advantages_mean) / (advantages_std + 1e-8)
+        else:
+            advantages = advantages - advantages_mean  # Zero-mean normalization
+
 
         # PPO update
         for _ in range(self.epochs):
@@ -85,7 +102,6 @@ class PPOAgent:
             # Add numerical stability
             dist = Normal(mu, std)
 
-            # actions_scaled = torch.clamp(actions_scaled, 1e-6, 1-1e-6)  # Avoid 0 and 1
             log_probs = dist.log_prob(actions).sum(1, keepdim=True)
             entropy = dist.entropy().mean()
 

@@ -27,6 +27,10 @@ class TrappedIonEnv(gym.Env):
         self.max_steps = 100
         self.current_step = 0
 
+        # Error threshold for early stopping
+        self.relative_error_threshold = 0.01
+        self.goal_bonus = 100
+
     def seed(self, seed=None):
         self.np_random, seed = gym.utils.seeding.np_random(seed)
         return [seed]
@@ -53,7 +57,13 @@ class TrappedIonEnv(gym.Env):
         
         # Check if the episode is done
         self.current_step += 1
-        done = self.current_step >= self.max_steps
+        if self.current_step >= self.max_steps:
+            done = True
+        elif abs(self.laser_intensity-self.target_intensity)/self.target_intensity <= self.relative_error_threshold:
+            done = True
+            reward += self.goal_bonus
+        else:
+            done = False
         
         # Additional info
         info = {}
