@@ -135,7 +135,7 @@ def train_ppo(env, agent, n_train_episodes, max_steps, n_test_episodes):
                 std_reward = np.std(all_rewards[-100:])
                 avg_intensity = np.mean([intensities[-1] for intensities in all_intensities[-100:] if intensities])
                 std_intensity = np.std([intensities[-1] for intensities in all_intensities[-100:] if intensities])
-                print(f"\nEpisode {episode}, Avg Reward (last 100): {avg_reward:.2f}, Avg Loss (last 100): {avg_loss:.4f}, Avg Final Intensity (last 100): {avg_intensity:.2f}, Std Final Intensity (last 100): {std_intensity:.2f}")
+                print(f"\nEpisode {episode}, Avg Final Intensity (last 100): {avg_intensity:.2f}, Std Final Intensity (last 100): {std_intensity:.2f}")
                 print(f"Last action: {action}, Last reward: {reward:.2f}, Initial intensity: {env.initial_intensity:.2f}, Final intensity: {env.laser_intensity:.2f}")
 
             if episode==n_train_episodes-1:
@@ -156,7 +156,7 @@ def train_ppo(env, agent, n_train_episodes, max_steps, n_test_episodes):
         avg_reward = np.mean(all_rewards[-100:])
         avg_intensity = np.mean([intensities[-1] for intensities in all_intensities[-100:] if intensities])
         std_intensity = np.std([intensities[-1] for intensities in all_intensities[-100:] if intensities])
-        print(f"Avg Reward (last 100): {avg_reward:.2f}, Avg Loss (last 100): {avg_loss:.4f}, Avg Final Intensity (last 100): {avg_intensity:.2f}, Std Final Intensity (last 100): {std_intensity:.2f}")
+        print(f"Avg Final Intensity (last 100): {avg_intensity:.2f}, Std Final Intensity (last 100): {std_intensity:.2f}")
         print(f"Last reward: {all_rewards[-1]:.2f}, Final intensity: {env.laser_intensity:.2f}")
         save_episode_intensity(episode_intensities, env.target_intensity, "figures/final_training_episode.png", episode)
         
@@ -182,6 +182,7 @@ if __name__ == "__main__":
         initial_lr=1e-4,
         gamma=0.99,
         clip_epsilon=0.3,
+        lam=0.9,
         epochs=10,
         lr_schedule = lr_schedule
     )
