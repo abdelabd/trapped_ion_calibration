@@ -45,8 +45,10 @@ def save_n_steps_hist(all_n_steps, n_test_episodes, filename):
     fig = plt.figure()
     n_steps_hist, n_steps_edges = np.histogram(all_n_steps, bins=100)
     plt.step(n_steps_edges[:-1], n_steps_hist, where='mid')
+    plt.axvline(np.mean(all_n_steps), color='r', linestyle='--', label = f"Mean = {np.mean(all_n_steps):.2f}")
     plt.xlabel('Number of Steps')
     plt.ylabel('Frequency')
+    plt.legend()
     plt.title(f'Number of calibration steps, {len(all_n_steps)}/{n_test_episodes} test episodes terminated')
     plt.savefig(filename, bbox_inches='tight')
     plt.close(fig)
@@ -187,7 +189,7 @@ if __name__ == "__main__":
     if DEBUG:
         n_train_episodes = 100
     else:
-        n_train_episodes = 800
+        n_train_episodes = int(1e3) #800
     n_test_episodes = int(1e3)
     max_steps = 100
 
