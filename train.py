@@ -189,7 +189,7 @@ if __name__ == "__main__":
     if DEBUG:
         n_train_episodes = 100
     else:
-        n_train_episodes = int(1e3) #800
+        n_train_episodes = 800
     n_test_episodes = int(1e3)
     max_steps = 100
 
